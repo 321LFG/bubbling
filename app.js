@@ -32,6 +32,19 @@ const state = {
   },
 };
 
+let renderFrameId = null;
+
+function requestRender() {
+  if (renderFrameId !== null) {
+    return;
+  }
+
+  renderFrameId = window.requestAnimationFrame(() => {
+    renderFrameId = null;
+    render();
+  });
+}
+
 function getCanvasSize() {
   return {
     width: state.canvasWidth,
@@ -240,7 +253,7 @@ function loadImage(file) {
     state.bubbles = [];
     state.preview = null;
     fitImageToCanvas(image);
-    render();
+    requestRender();
   };
 
   image.src = objectUrl;
@@ -263,7 +276,7 @@ function handlePointerDown(event) {
   state.preview = point;
   addBubble(point);
   state.lastPaintPoint = point;
-  render();
+  requestRender();
 }
 
 function handlePointerMove(event) {
@@ -275,7 +288,7 @@ function handlePointerMove(event) {
     state.lastPaintPoint = point;
   }
 
-  render();
+  requestRender();
 }
 
 function handlePointerUp(event) {
@@ -293,7 +306,7 @@ function handlePointerLeave() {
   }
 
   state.preview = null;
-  render();
+  requestRender();
 }
 
 function resetEditor() {
@@ -303,7 +316,7 @@ function resetEditor() {
   state.isPointerDown = false;
   state.lastPaintPoint = null;
   imageInput.value = "";
-  render();
+  requestRender();
 }
 
 imageInput.addEventListener("change", (event) => {
@@ -314,13 +327,13 @@ emptyState.addEventListener("click", openImagePicker);
 
 maskColorInput.addEventListener("input", (event) => {
   state.maskColor = event.target.value;
-  render();
+  requestRender();
 });
 
 radiusInput.addEventListener("input", (event) => {
   state.radius = Number(event.target.value);
   radiusOutput.value = `${state.radius}px`;
-  render();
+  requestRender();
 });
 
 resetButton.addEventListener("click", resetEditor);
@@ -330,10 +343,6 @@ canvas.addEventListener("pointermove", handlePointerMove);
 canvas.addEventListener("pointerup", handlePointerUp);
 canvas.addEventListener("pointercancel", handlePointerUp);
 canvas.addEventListener("pointerleave", handlePointerLeave);
-window.addEventListener("resize", () => {
-  if (resizeCanvasToDisplaySize()) {
-    render();
-  }
-});
+window.addEventListener("resize", requestRender);
 
 render();
