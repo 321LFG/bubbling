@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Bubble Mask Editor</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="controls" aria-label="Editor controls">
+        <label class="control">
+          <span>Upload Image</span>
+          <input id="imageInput" type="file" accept="image/*">
+        </label>
+
+        <label class="control color-control">
+          <span>Mask Color</span>
+          <input id="maskColor" type="color" value="#fff2dc">
+        </label>
+
+        <label class="control range-control">
+          <span>
+            Bubble Size
+            <output id="radiusOutput" for="bubbleRadius">60px</output>
+          </span>
+          <input id="bubbleRadius" type="range" min="10" max="150" value="60">
+        </label>
+
+        <button id="resetButton" type="button">Reset</button>
+      </section>
+
+      <section class="canvas-shell" aria-label="Canvas editor">
+        <canvas id="editorCanvas" width="960" height="640">
+          Your browser does not support HTML5 Canvas.
+        </canvas>
+        <p id="emptyState" class="empty-state">Upload an image to start.</p>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
