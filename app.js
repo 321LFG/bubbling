@@ -3,9 +3,6 @@ const ctx = canvas.getContext("2d");
 const maskCanvas = document.createElement("canvas");
 const maskCtx = maskCanvas.getContext("2d");
 
-maskCanvas.width = canvas.width;
-maskCanvas.height = canvas.height;
-
 const imageInput = document.getElementById("imageInput");
 const maskColorInput = document.getElementById("maskColor");
 const radiusInput = document.getElementById("bubbleRadius");
@@ -14,12 +11,16 @@ const resetButton = document.getElementById("resetButton");
 const emptyState = document.getElementById("emptyState");
 
 const MASK_ALPHA = 1;
+const MAX_PIXEL_RATIO = 3;
 
 const state = {
   image: null,
   bubbles: [],
   radius: Number(radiusInput.value),
   maskColor: maskColorInput.value,
+  canvasWidth: canvas.width,
+  canvasHeight: canvas.height,
+  pixelRatio: 1,
   preview: null,
   isPointerDown: false,
   lastPaintPoint: null,
@@ -30,6 +31,78 @@ const state = {
     height: canvas.height,
   },
 };
+
+function getCanvasSize() {
+  return {
+    width: state.canvasWidth,
+    height: state.canvasHeight,
+  };
+}
+
+function resizeCanvasToDisplaySize() {
+  const rect = canvas.getBoundingClientRect();
+
+  if (!rect.width || !rect.height) {
+    return false;
+  }
+
+  const previousWidth = state.canvasWidth;
+  const previousHeight = state.canvasHeight;
+  const width = Math.round(rect.width);
+  const height = Math.round(rect.height);
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+  const bitmapWidth = Math.round(width * pixelRatio);
+  const bitmapHeight = Math.round(height * pixelRatio);
+  const sizeChanged = width !== previousWidth || height !== previousHeight;
+  const bitmapChanged = canvas.width !== bitmapWidth || canvas.height !== bitmapHeight;
+
+  if (!bitmapChanged && state.pixelRatio === pixelRatio) {
+    return false;
+  }
+
+  state.canvasWidth = width;
+  state.canvasHeight = height;
+  state.pixelRatio = pixelRatio;
+
+  canvas.width = bitmapWidth;
+  canvas.height = bitmapHeight;
+  maskCanvas.width = bitmapWidth;
+  maskCanvas.height = bitmapHeight;
+
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  maskCtx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  maskCtx.imageSmoothingEnabled = true;
+  maskCtx.imageSmoothingQuality = "high";
+
+  if (sizeChanged && previousWidth && previousHeight) {
+    const scaleX = width / previousWidth;
+    const scaleY = height / previousHeight;
+
+    for (const bubble of state.bubbles) {
+      bubble.x *= scaleX;
+      bubble.y *= scaleY;
+      bubble.radius *= (scaleX + scaleY) / 2;
+    }
+
+    if (state.preview) {
+      state.preview.x *= scaleX;
+      state.preview.y *= scaleY;
+    }
+
+    if (state.lastPaintPoint) {
+      state.lastPaintPoint.x *= scaleX;
+      state.lastPaintPoint.y *= scaleY;
+    }
+  }
+
+  if (state.image) {
+    fitImageToCanvas(state.image);
+  }
+
+  return true;
+}
 
 function hexToRgba(hex, alpha) {
   const clean = hex.replace("#", "");
@@ -42,11 +115,12 @@ function hexToRgba(hex, alpha) {
 }
 
 function fitImageToCanvas(image) {
+  const { width: canvasWidth, height: canvasHeight } = getCanvasSize();
   const imageRatio = image.naturalWidth / image.naturalHeight;
-  const canvasRatio = canvas.width / canvas.height;
+  const canvasRatio = canvasWidth / canvasHeight;
 
-  let width = canvas.width;
-  let height = canvas.height;
+  let width = canvasWidth;
+  let height = canvasHeight;
 
   if (imageRatio > canvasRatio) {
     height = width / imageRatio;
@@ -55,8 +129,8 @@ function fitImageToCanvas(image) {
   }
 
   state.imageDraw = {
-    x: (canvas.width - width) / 2,
-    y: (canvas.height - height) / 2,
+    x: (canvasWidth - width) / 2,
+    y: (canvasHeight - height) / 2,
     width,
     height,
   };
@@ -64,8 +138,8 @@ function fitImageToCanvas(image) {
 
 function getPointerPosition(event) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  const scaleX = state.canvasWidth / rect.width;
+  const scaleY = state.canvasHeight / rect.height;
 
   return {
     x: (event.clientX - rect.left) * scaleX,
@@ -94,9 +168,11 @@ function shouldPaintAt(point) {
 }
 
 function renderEmptyCanvas() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const { width, height } = getCanvasSize();
+
+  ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#eef2f4";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, width, height);
 }
 
 function renderPreview() {
@@ -116,7 +192,10 @@ function renderPreview() {
 }
 
 function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  resizeCanvasToDisplaySize();
+
+  const { width, height } = getCanvasSize();
+  ctx.clearRect(0, 0, width, height);
 
   if (!state.image) {
     renderEmptyCanvas();
@@ -129,9 +208,9 @@ function render() {
   const draw = state.imageDraw;
   ctx.drawImage(state.image, draw.x, draw.y, draw.width, draw.height);
 
-  maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+  maskCtx.clearRect(0, 0, width, height);
   maskCtx.fillStyle = hexToRgba(state.maskColor, MASK_ALPHA);
-  maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+  maskCtx.fillRect(0, 0, width, height);
 
   maskCtx.save();
   maskCtx.globalCompositeOperation = "destination-out";
@@ -142,7 +221,7 @@ function render() {
   }
   maskCtx.restore();
 
-  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.drawImage(maskCanvas, 0, 0, width, height);
 
   renderPreview();
 }
@@ -245,5 +324,10 @@ canvas.addEventListener("pointermove", handlePointerMove);
 canvas.addEventListener("pointerup", handlePointerUp);
 canvas.addEventListener("pointercancel", handlePointerUp);
 canvas.addEventListener("pointerleave", handlePointerLeave);
+window.addEventListener("resize", () => {
+  if (resizeCanvasToDisplaySize()) {
+    render();
+  }
+});
 
 render();
