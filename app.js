@@ -16,7 +16,7 @@ const MAX_PIXEL_RATIO = 3;
 const state = {
   image: null,
   bubbles: [],
-  radius: Number(radiusInput.value),
+  radius: Number(radiusInput.value) / 2,
   maskColor: maskColorInput.value,
   canvasWidth: canvas.width,
   canvasHeight: canvas.height,
@@ -54,6 +54,30 @@ function getCanvasSize() {
     width: state.canvasWidth,
     height: state.canvasHeight,
   };
+}
+
+function getDiameterFromRadius(radius) {
+  return Math.round(radius * 2);
+}
+
+function getRadiusFromDiameter(diameter) {
+  return Number(diameter) / 2;
+}
+
+function updateDiameterControl(radius) {
+  const diameter = getDiameterFromRadius(radius);
+  radiusInput.value = String(diameter);
+  radiusOutput.value = `${diameter}px`;
+  updateRangeProgress();
+}
+
+function updateRangeProgress() {
+  const min = Number(radiusInput.min);
+  const max = Number(radiusInput.max);
+  const value = Number(radiusInput.value);
+  const progress = ((value - min) / (max - min)) * 100;
+
+  radiusInput.style.setProperty("--range-progress", `${progress}%`);
 }
 
 function resizeCanvasToDisplaySize() {
@@ -207,17 +231,6 @@ function renderPreview() {
     return;
   }
 
-  const activeBubble = getActiveBubble();
-  if (activeBubble) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(activeBubble.x, activeBubble.y, activeBubble.radius, 0, Math.PI * 2);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(23, 107, 135, 0.95)";
-    ctx.stroke();
-    ctx.restore();
-  }
-
   if (!state.preview) {
     return;
   }
@@ -316,9 +329,8 @@ function handlePointerDown(event) {
   } else {
     state.activeBubbleIndex = selectedIndex;
     bubble = state.bubbles[selectedIndex];
-    state.radius = Math.round(bubble.radius);
-    radiusInput.value = String(state.radius);
-    radiusOutput.value = `${state.radius}px`;
+    state.radius = bubble.radius;
+    updateDiameterControl(state.radius);
   }
 
   state.isDraggingBubble = true;
@@ -389,8 +401,10 @@ maskColorInput.addEventListener("input", (event) => {
 });
 
 radiusInput.addEventListener("input", (event) => {
-  state.radius = Number(event.target.value);
-  radiusOutput.value = `${state.radius}px`;
+  const diameter = Number(event.target.value);
+  state.radius = getRadiusFromDiameter(diameter);
+  radiusOutput.value = `${diameter}px`;
+  updateRangeProgress();
 
   const activeBubble = getActiveBubble();
   if (activeBubble) {
@@ -409,4 +423,5 @@ canvas.addEventListener("pointercancel", handlePointerUp);
 canvas.addEventListener("pointerleave", handlePointerLeave);
 window.addEventListener("resize", requestRender);
 
+updateRangeProgress();
 render();
