@@ -145,14 +145,16 @@ canvas {
 
 .empty-state {
   position: absolute;
-  inset: 8px;
-  display: grid;
+  inset: auto;
+  display: inline-grid;
   place-items: center;
+  min-width: 160px;
+  min-height: 48px;
   margin: 0;
-  padding: 24px;
-  color: var(--accent);
-  background: transparent;
-  border: 2px dashed var(--line);
+  padding: 0 18px;
+  color: #ffffff;
+  background: var(--accent);
+  border: 0;
   border-radius: 6px;
   font-weight: 700;
   text-align: center;
@@ -164,8 +166,8 @@ canvas {
 }
 
 .empty-state:hover {
-  color: var(--accent-strong);
-  background: rgba(23, 107, 135, 0.08);
+  color: #ffffff;
+  background: var(--accent-strong);
 }
 
 .empty-state:focus-visible {

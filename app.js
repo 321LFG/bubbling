@@ -252,8 +252,6 @@ function openImagePicker() {
 
 function handlePointerDown(event) {
   if (!state.image) {
-    event.preventDefault();
-    openImagePicker();
     return;
   }
 
