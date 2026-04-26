@@ -21,9 +21,13 @@ const state = {
   canvasWidth: canvas.width,
   canvasHeight: canvas.height,
   pixelRatio: 1,
+  activeBubbleIndex: null,
   preview: null,
-  isPointerDown: false,
-  lastPaintPoint: null,
+  isDraggingBubble: false,
+  dragOffset: {
+    x: 0,
+    y: 0,
+  },
   imageDraw: {
     x: 0,
     y: 0,
@@ -104,10 +108,6 @@ function resizeCanvasToDisplaySize() {
       state.preview.y *= scaleY;
     }
 
-    if (state.lastPaintPoint) {
-      state.lastPaintPoint.x *= scaleX;
-      state.lastPaintPoint.y *= scaleY;
-    }
   }
 
   if (state.image) {
@@ -161,23 +161,37 @@ function getPointerPosition(event) {
 }
 
 function addBubble(point) {
-  state.bubbles.push({
+  const bubble = {
     x: point.x,
     y: point.y,
     radius: state.radius,
-  });
+  };
+
+  state.bubbles.push(bubble);
+  state.activeBubbleIndex = state.bubbles.length - 1;
+
+  return bubble;
 }
 
-function shouldPaintAt(point) {
-  if (!state.lastPaintPoint) {
-    return true;
+function getActiveBubble() {
+  if (state.activeBubbleIndex === null) {
+    return null;
   }
 
-  const dx = point.x - state.lastPaintPoint.x;
-  const dy = point.y - state.lastPaintPoint.y;
-  const distance = Math.hypot(dx, dy);
+  return state.bubbles[state.activeBubbleIndex] || null;
+}
 
-  return distance >= Math.max(6, state.radius * 0.35);
+function findBubbleAt(point) {
+  for (let index = state.bubbles.length - 1; index >= 0; index -= 1) {
+    const bubble = state.bubbles[index];
+    const distance = Math.hypot(point.x - bubble.x, point.y - bubble.y);
+
+    if (distance <= bubble.radius) {
+      return index;
+    }
+  }
+
+  return null;
 }
 
 function renderEmptyCanvas() {
@@ -189,7 +203,26 @@ function renderEmptyCanvas() {
 }
 
 function renderPreview() {
-  if (!state.preview || !state.image) {
+  if (!state.image) {
+    return;
+  }
+
+  const activeBubble = getActiveBubble();
+  if (activeBubble) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(activeBubble.x, activeBubble.y, activeBubble.radius, 0, Math.PI * 2);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(23, 107, 135, 0.95)";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (!state.preview) {
+    return;
+  }
+
+  if (state.isDraggingBubble) {
     return;
   }
 
@@ -251,6 +284,7 @@ function loadImage(file) {
     URL.revokeObjectURL(objectUrl);
     state.image = image;
     state.bubbles = [];
+    state.activeBubbleIndex = null;
     state.preview = null;
     fitImageToCanvas(image);
     requestRender();
@@ -272,10 +306,27 @@ function handlePointerDown(event) {
   canvas.setPointerCapture(event.pointerId);
 
   const point = getPointerPosition(event);
-  state.isPointerDown = true;
   state.preview = point;
-  addBubble(point);
-  state.lastPaintPoint = point;
+
+  const selectedIndex = findBubbleAt(point);
+  let bubble;
+
+  if (selectedIndex === null) {
+    bubble = addBubble(point);
+  } else {
+    state.activeBubbleIndex = selectedIndex;
+    bubble = state.bubbles[selectedIndex];
+    state.radius = Math.round(bubble.radius);
+    radiusInput.value = String(state.radius);
+    radiusOutput.value = `${state.radius}px`;
+  }
+
+  state.isDraggingBubble = true;
+  state.dragOffset = {
+    x: bubble.x - point.x,
+    y: bubble.y - point.y,
+  };
+
   requestRender();
 }
 
@@ -283,17 +334,20 @@ function handlePointerMove(event) {
   const point = getPointerPosition(event);
   state.preview = point;
 
-  if (state.image && state.isPointerDown && shouldPaintAt(point)) {
-    addBubble(point);
-    state.lastPaintPoint = point;
+  if (state.image && state.isDraggingBubble) {
+    const activeBubble = getActiveBubble();
+
+    if (activeBubble) {
+      activeBubble.x = point.x + state.dragOffset.x;
+      activeBubble.y = point.y + state.dragOffset.y;
+    }
   }
 
   requestRender();
 }
 
 function handlePointerUp(event) {
-  state.isPointerDown = false;
-  state.lastPaintPoint = null;
+  state.isDraggingBubble = false;
 
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
@@ -301,7 +355,7 @@ function handlePointerUp(event) {
 }
 
 function handlePointerLeave() {
-  if (state.isPointerDown) {
+  if (state.isDraggingBubble) {
     return;
   }
 
@@ -312,9 +366,13 @@ function handlePointerLeave() {
 function resetEditor() {
   state.image = null;
   state.bubbles = [];
+  state.activeBubbleIndex = null;
   state.preview = null;
-  state.isPointerDown = false;
-  state.lastPaintPoint = null;
+  state.isDraggingBubble = false;
+  state.dragOffset = {
+    x: 0,
+    y: 0,
+  };
   imageInput.value = "";
   requestRender();
 }
@@ -333,6 +391,12 @@ maskColorInput.addEventListener("input", (event) => {
 radiusInput.addEventListener("input", (event) => {
   state.radius = Number(event.target.value);
   radiusOutput.value = `${state.radius}px`;
+
+  const activeBubble = getActiveBubble();
+  if (activeBubble) {
+    activeBubble.radius = state.radius;
+  }
+
   requestRender();
 });
 
