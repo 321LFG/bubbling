@@ -72,6 +72,16 @@ input[type="file"] {
   background: #fbfcfd;
 }
 
+.visually-hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 input[type="color"] {
   width: 100%;
   height: 44px;
@@ -122,9 +132,11 @@ button:hover {
 canvas {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: calc(100dvh - 230px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-  aspect-ratio: 3 / 2;
+  height: min(
+    calc((100vw - 36px) * 4 / 3),
+    calc(100dvh - 230px - env(safe-area-inset-top) - env(safe-area-inset-bottom))
+  );
+  aspect-ratio: 3 / 4;
   background: #eef2f4;
   border-radius: 6px;
   cursor: crosshair;
@@ -133,37 +145,75 @@ canvas {
 
 .empty-state {
   position: absolute;
-  inset: 0;
+  inset: 8px;
   display: grid;
   place-items: center;
   margin: 0;
   padding: 24px;
-  color: var(--muted);
+  color: var(--accent);
+  background: transparent;
+  border: 2px dashed var(--line);
+  border-radius: 6px;
   font-weight: 700;
   text-align: center;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .empty-state.is-hidden {
   display: none;
 }
 
-.range-control,
-.control:first-child {
-  grid-column: 1 / -1;
+.empty-state:hover {
+  color: var(--accent-strong);
+  background: rgba(23, 107, 135, 0.08);
 }
 
-.control:first-child {
-  order: 1;
+.empty-state:focus-visible {
+  outline: 3px solid rgba(23, 107, 135, 0.35);
+  outline-offset: 3px;
+}
+
+.orientation-warning {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  background: var(--bg);
+  text-align: center;
+}
+
+.orientation-warning p {
+  max-width: 280px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .range-control {
-  order: 2;
+  grid-column: 1 / -1;
+  order: 1;
 }
 
 .color-control,
 button {
-  order: 3;
+  order: 2;
+}
+
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 520px) {
+  body {
+    overflow: hidden;
+  }
+
+  .app {
+    display: none;
+  }
+
+  .orientation-warning {
+    display: grid;
+  }
 }
 
 @media (min-width: 760px) {
@@ -173,7 +223,7 @@ button {
   }
 
   .controls {
-    grid-template-columns: minmax(180px, 1fr) 160px minmax(220px, 1fr) auto;
+    grid-template-columns: 160px minmax(220px, 1fr) auto;
     gap: 12px;
     margin-bottom: 16px;
     padding: 14px;
@@ -184,12 +234,10 @@ button {
     font-size: 13px;
   }
 
-  .range-control,
-  .control:first-child {
+  .range-control {
     grid-column: auto;
   }
 
-  .control:first-child,
   .range-control,
   .color-control,
   button {
@@ -202,7 +250,9 @@ button {
   }
 
   canvas {
+    height: auto;
     max-height: calc(100vh - 170px);
     max-height: calc(100dvh - 170px);
+    aspect-ratio: 3 / 2;
   }
 }

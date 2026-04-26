@@ -246,8 +246,14 @@ function loadImage(file) {
   image.src = objectUrl;
 }
 
+function openImagePicker() {
+  imageInput.click();
+}
+
 function handlePointerDown(event) {
   if (!state.image) {
+    event.preventDefault();
+    openImagePicker();
     return;
   }
 
@@ -305,6 +311,8 @@ function resetEditor() {
 imageInput.addEventListener("change", (event) => {
   loadImage(event.target.files[0]);
 });
+
+emptyState.addEventListener("click", openImagePicker);
 
 maskColorInput.addEventListener("input", (event) => {
   state.maskColor = event.target.value;
