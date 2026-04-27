@@ -28,6 +28,7 @@ const state = {
     x: 0,
     y: 0,
   },
+  touchLift: 0,
   imageDraw: {
     x: 0,
     y: 0,
@@ -184,6 +185,25 @@ function getPointerPosition(event) {
   };
 }
 
+function getTouchLift(event, radius) {
+  if (event.pointerType !== "touch") {
+    return 0;
+  }
+
+  return Math.max(70, radius * 0.9);
+}
+
+function moveDraggedBubble(point) {
+  const activeBubble = getActiveBubble();
+
+  if (!activeBubble) {
+    return;
+  }
+
+  activeBubble.x = point.x + state.dragOffset.x;
+  activeBubble.y = Math.max(0, point.y + state.dragOffset.y - state.touchLift);
+}
+
 function addBubble(point) {
   const bubble = {
     x: point.x,
@@ -325,12 +345,14 @@ function handlePointerDown(event) {
   let bubble;
 
   if (selectedIndex === null) {
+    state.touchLift = getTouchLift(event, state.radius);
     bubble = addBubble(point);
   } else {
     state.activeBubbleIndex = selectedIndex;
     bubble = state.bubbles[selectedIndex];
     state.radius = bubble.radius;
     updateDiameterControl(state.radius);
+    state.touchLift = getTouchLift(event, bubble.radius);
   }
 
   state.isDraggingBubble = true;
@@ -338,6 +360,7 @@ function handlePointerDown(event) {
     x: bubble.x - point.x,
     y: bubble.y - point.y,
   };
+  moveDraggedBubble(point);
 
   requestRender();
 }
@@ -347,12 +370,7 @@ function handlePointerMove(event) {
   state.preview = point;
 
   if (state.image && state.isDraggingBubble) {
-    const activeBubble = getActiveBubble();
-
-    if (activeBubble) {
-      activeBubble.x = point.x + state.dragOffset.x;
-      activeBubble.y = point.y + state.dragOffset.y;
-    }
+    moveDraggedBubble(point);
   }
 
   requestRender();
@@ -360,6 +378,7 @@ function handlePointerMove(event) {
 
 function handlePointerUp(event) {
   state.isDraggingBubble = false;
+  state.touchLift = 0;
 
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
@@ -385,6 +404,7 @@ function resetEditor() {
     x: 0,
     y: 0,
   };
+  state.touchLift = 0;
   imageInput.value = "";
   requestRender();
 }
